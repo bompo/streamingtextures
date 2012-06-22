@@ -2,10 +2,11 @@ Streaming textures with progressive JPEG
 =================
 
 ### Examples
-The Examples stream a 2048x2048 (1.5 MB) progressive JPEG using different methods:
+The Examples stream a 2048x2048 (1.5 MB) progressive JPEG assigned to a spinning cube using different methods:
 <a href="http://bompo.github.com/streamingtextures/streaming_native.html">Streaming using native Image Element (only works in Firefox)</a><br/>
 <a href="http://bompo.github.com/streamingtextures/streaming_native_canvas.html">Streaming using native Image Element and 2D Canvas</a><br/>
-<a href="http://bompo.github.com/streamingtextures/streaming_worker.html">Streaming using compiled libjpeg and web workers</a>
+<a href="http://bompo.github.com/streamingtextures/streaming_worker.html">Streaming using compiled libjpeg and web workers</a><br/>
+<a href="http://bompo.github.com/streamingtextures/streaming_worker_custom.html">Streaming using compiled libjpeg and web workers with controls</a>
 
 ### Explanation
 3D models can be compressed with compression formats like <a href="http://code.google.com/p/webgl-loader/">WebGL Loader</a> or <a href="http://code.google.com/p/js-openctm/">OpenCTM</a> to a resonable amount.
