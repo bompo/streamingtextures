@@ -1,0 +1,509 @@
+<html>
+<head>
+<script type="text/javascript" src="glmatrix.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec2 vTextureCoord;
+
+    uniform sampler2D uSampler;
+
+    void main(void) {
+        gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec2 aTextureCoord;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+
+    varying vec2 vTextureCoord;
+
+
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vTextureCoord = aTextureCoord;
+    }
+</script>
+
+<script>
+    var gl;
+
+    function initGL(canvas) {
+        try {
+            gl = canvas.getContext("experimental-webgl");
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+
+    var shaderProgram;
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+        shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+    }
+
+    var diffTexture;
+    function initTexture() {
+        diffTexture = gl.createTexture();
+        diffTexture.image = new Image();
+    }
+
+    var mvMatrix = mat4.create();
+    var mvMatrixStack = [];
+    var pMatrix = mat4.create();
+
+    function mvPushMatrix() {
+        var copy = mat4.create();
+        mat4.set(mvMatrix, copy);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix() {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = mvMatrixStack.pop();
+    }
+
+
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+    }
+
+
+    function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    var cubeVertexPositionBuffer;
+    var cubeVertexTextureCoordBuffer;
+    var cubeVertexIndexBuffer;
+
+    function initBuffers() {
+        cubeVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        vertices = [
+            // Front face
+            -1.0, -1.0,  1.0,
+             1.0, -1.0,  1.0,
+             1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
+
+            // Back face
+            -1.0, -1.0, -1.0,
+            -1.0,  1.0, -1.0,
+             1.0,  1.0, -1.0,
+             1.0, -1.0, -1.0,
+
+            // Top face
+            -1.0,  1.0, -1.0,
+            -1.0,  1.0,  1.0,
+             1.0,  1.0,  1.0,
+             1.0,  1.0, -1.0,
+
+            // Bottom face
+            -1.0, -1.0, -1.0,
+             1.0, -1.0, -1.0,
+             1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
+
+            // Right face
+             1.0, -1.0, -1.0,
+             1.0,  1.0, -1.0,
+             1.0,  1.0,  1.0,
+             1.0, -1.0,  1.0,
+
+            // Left face
+            -1.0, -1.0, -1.0,
+            -1.0, -1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            -1.0,  1.0, -1.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        cubeVertexPositionBuffer.itemSize = 3;
+        cubeVertexPositionBuffer.numItems = 24;
+
+        cubeVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        var textureCoords = [
+          // Front face
+          0.0, 0.0,
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+
+          // Back face
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+          0.0, 0.0,
+
+          // Top face
+          0.0, 1.0,
+          0.0, 0.0,
+          1.0, 0.0,
+          1.0, 1.0,
+
+          // Bottom face
+          1.0, 1.0,
+          0.0, 1.0,
+          0.0, 0.0,
+          1.0, 0.0,
+
+          // Right face
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+          0.0, 0.0,
+
+          // Left face
+          0.0, 0.0,
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        cubeVertexTextureCoordBuffer.itemSize = 2;
+        cubeVertexTextureCoordBuffer.numItems = 24;
+
+        cubeVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        var cubeVertexIndices = [
+            0, 1, 2,      0, 2, 3,    // Front face
+            4, 5, 6,      4, 6, 7,    // Back face
+            8, 9, 10,     8, 10, 11,  // Top face
+            12, 13, 14,   12, 14, 15, // Bottom face
+            16, 17, 18,   16, 18, 19, // Right face
+            20, 21, 22,   20, 22, 23  // Left face
+        ];
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+        cubeVertexIndexBuffer.itemSize = 1;
+        cubeVertexIndexBuffer.numItems = 36;
+    }
+
+
+    var xRot = 0;
+    var yRot = 0;
+    var zRot = 0;
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+
+        mat4.identity(mvMatrix);
+
+        mat4.translate(mvMatrix, [0.0, 0.0, -2.0]);
+
+        mat4.rotate(mvMatrix, degToRad(xRot), [1, 0, 0]);
+        mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
+        mat4.rotate(mvMatrix, degToRad(zRot), [0, 0, 1]);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, diffTexture);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+    }
+
+
+    var lastTime = 0;
+
+    function animate() {
+        var timeNow = new Date().getTime();
+        if (lastTime != 0) {
+            var elapsed = timeNow - lastTime;
+
+            passedTime = passedTime + elapsed;
+
+            xRot += (90 * elapsed) / 100000.0;
+            yRot += (90 * elapsed) / 100000.0;
+            zRot += (90 * elapsed) / 100000.0;
+        }
+        lastTime = timeNow;
+    }
+
+
+    function tick() {
+        requestAnimFrame(tick);
+        uploadTextur();
+        drawScene();
+        animate();
+    }
+
+    function uploadTextur() {
+        if(uploadTextureData) {
+            if(uploadTextureData.length>0) {
+                gl.bindTexture(gl.TEXTURE_2D, diffTexture);
+                gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+                gl.texSubImage2D (gl.TEXTURE_2D, 0, 0, uploadTextureDataOffsetY, 2048, 32, gl.RGBA, gl.UNSIGNED_BYTE, uploadTextureData.subarray(0, 262144));
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                
+                uploadTextureData = uploadTextureData.subarray(262144,uploadTextureData.length);
+                uploadTextureDataOffsetY = uploadTextureDataOffsetY - 32;
+            }
+        }
+    }
+
+
+    function webGLStart() {
+        var canvas = document.getElementById("canvas");
+        initGL(canvas);
+        initShaders();
+        initBuffers();
+        initTexture();
+
+        gl.clearColor(0.9, 0.9, 0.9, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+
+        startDownload();
+        tick();
+    }
+
+    var src = "uv_2k.jpg";
+    var xhr = new XMLHttpRequest();
+    var worker;
+    var workerbusy = false;
+    var passedTime = 1001;
+
+    var uploadTextureData;
+    var uploadTextureDataOffsetX = 0;
+    var uploadTextureDataOffsetY = 0;
+
+    function startDownload() {
+        uploadTextureData = new Uint8Array(2048*2048*4);
+        for (var i=0;i<2048*2048*4;++i) {
+            uploadTextureData[i] = 0;
+        }
+
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        gl.bindTexture(gl.TEXTURE_2D, diffTexture);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D (gl.TEXTURE_2D, 0, gl.RGBA, 2048, 2048, 0, gl.RGBA, gl.UNSIGNED_BYTE, uploadTextureData);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        diffTexture.uploaded = true;
+        uploadTextureData = null;
+
+
+        xhr.addEventListener("progress", updateProgress, false);
+        xhr.addEventListener("load", bindTexture, false);
+        
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        
+        xhr.open('GET', src);
+        xhr.send();
+    }
+
+    function updateProgress(e) {
+        if(workerbusy === false && passedTime >= 2500) {
+            passedTime = 0;
+
+            var t = (xhr.mozResponseArrayBuffer || xhr.mozResponse || xhr.responseArrayBuffer || xhr.response);
+
+            if(uploadTextureData != null) {
+                console.log(uploadTextureData.length);
+            }
+
+
+            //texture applied? if then start new worker
+            if(uploadTextureData == null || uploadTextureData.length == 0) {
+                workerbusy = true;
+
+                diffTexture.image.onload = function() {
+                    
+                    var canvas2d = document.getElementById('canvas2d');
+                    canvas2d.width = 2048;
+                    canvas2d.height = 2048;
+                    var ctx2d = canvas2d.getContext('2d');
+                    ctx2d.drawImage(diffTexture.image, 0, 0);
+
+                    var canvaspixelarray = ctx2d.getImageData(0, 0, 2048, 2048).data;
+                    uploadTextureData = new Uint8Array(canvaspixelarray.length);
+                    for (var i=0;i<canvaspixelarray.length;++i) {
+                        uploadTextureData[i] = canvaspixelarray[i];
+                    }
+                    
+                    uploadTextureData = uploadTextureData;
+                    uploadTextureDataOffsetY = 2048-32;
+
+                    workerbusy = false;
+                };
+                diffTexture.image.src = "data:image/jpeg;base64," + base64Encode(t);
+            }
+               
+            
+        }
+    }
+
+    function bindTexture(e) {
+        var t = (xhr.mozResponseArrayBuffer || xhr.mozResponse || xhr.responseArrayBuffer || xhr.response);
+
+         diffTexture.image.onload = function() {
+
+                var canvas2d = document.getElementById('canvas2d');
+                canvas2d.width = 2048;
+                canvas2d.height = 2048;
+                var ctx2d = canvas2d.getContext('2d');
+                ctx2d.drawImage(diffTexture.image, 0, 0);
+
+                var canvaspixelarray = ctx2d.getImageData(0, 0, 2048, 2048).data;
+                uploadTextureData = new Uint8Array(canvaspixelarray.length);
+                for (var i=0;i<canvaspixelarray.length;++i) {
+                    uploadTextureData[i] = canvaspixelarray[i];
+                }
+
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+                gl.bindTexture(gl.TEXTURE_2D, diffTexture);
+                gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                if(!diffTexture.uploaded) {
+                    gl.texImage2D (gl.TEXTURE_2D, 0, gl.RGBA, 2048, 2048, 0, gl.RGBA, gl.UNSIGNED_BYTE, uploadTextureData);
+                    diffTexture.uploaded = true;
+                } else {
+                    uploadTextureData = uploadTextureData;
+                    uploadTextureDataOffsetY = 2048-32;
+                }
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+        };
+        diffTexture.image.src = "data:image/jpeg;base64," + base64Encode(t);
+          
+    }
+
+    // This encoding function is from Philippe Tenenhaus's example at http://www.philten.com/us-xmlhttprequest-image/
+    // mentioned in http://blogs.adobe.com/webplatform/2012/01/13/html5-image-progress-events/
+    function base64Encode(inputStr) {
+        var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        var outputStr = "";
+        var i = 0;
+
+        while (i < inputStr.length) {
+            //all three "& 0xff" added below are there to fix a known bug 
+            //with bytes returned by xhr.responseText
+            var byte1 = inputStr.charCodeAt(i++) & 0xff;
+            var byte2 = inputStr.charCodeAt(i++) & 0xff;
+            var byte3 = inputStr.charCodeAt(i++) & 0xff;
+
+            var enc1 = byte1 >> 2;
+            var enc2 = ((byte1 & 3) << 4) | (byte2 >> 4);
+
+            var enc3, enc4;
+            if (isNaN(byte2)) {
+                enc3 = enc4 = 64;
+            } else {
+                enc3 = ((byte2 & 15) << 2) | (byte3 >> 6);
+                if (isNaN(byte3)) {
+                    enc4 = 64;
+                } else {
+                    enc4 = byte3 & 63;
+                }
+            }
+            outputStr += b64.charAt(enc1) + b64.charAt(enc2) + b64.charAt(enc3) + b64.charAt(enc4);
+        }
+
+        return outputStr;
+    }
+  
+  </script>
+
+
+</head>
+<body onload="webGLStart();">
+<div>
+<canvas id="canvas" width="1024" height="1024"></canvas>
+</div>
+<div>
+<canvas id="canvas2d" width="1024" height="1024"></canvas>
+</div>
+</body>
+</html>

@@ -1,0 +1,3 @@
+texture sources
+uv texture from http://www.pixelcg.com/blog/?p=146
+brick texture from http://cdn.designinstruct.com/files/256-cleveland_collection_textures/brick_02.jpg
