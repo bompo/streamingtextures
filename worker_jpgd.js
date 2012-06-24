@@ -1,8 +1,11 @@
-importScripts('djpeg.js');
+importScripts('jpgd_o2.js');
 
 onmessage = function(event) {
 	var data = readJpeg(event.data);
 
+
+   
+    /*
 	var b = new ArrayBuffer(2048*2048*4);
     var v1 = new Uint8Array(b);
     
@@ -17,6 +20,7 @@ onmessage = function(event) {
         i += 4;
         j += 3;
     }
+    */
 
-	postMessage(v1);
+	postMessage(data);
 };
