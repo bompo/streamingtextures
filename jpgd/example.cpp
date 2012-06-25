@@ -14,13 +14,21 @@ int main()
     //stbi_write_tga("output.bin", width, height, actual_comps, pImage_data);
     
     //printf("%s",pImage_data);
-    
+
+	for(int i=0; i<width*height*actual_comps; i++) {
+		unsigned char ch = *pImage_data;
+        printf("%c", ch);
+        pImage_data++;
+	}
+
+	/*
     unsigned char ch;
-    while(*pImage_data != 0) {
+    while(*pImage_data != null) {
         ch = *pImage_data;
         printf("%c", ch);
         pImage_data++;
     }
+	*/
 
 	return 0;
 }

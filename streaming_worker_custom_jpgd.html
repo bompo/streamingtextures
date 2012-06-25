@@ -431,40 +431,10 @@
         workerbusy = false;
 
         worker.onmessage = function(event) {
-            var message = event.data;
-
-            console.log(message);
 
             console.timeEnd("worker");
             
-            var buf = new ArrayBuffer(2048*2048*3); // 2 bytes for each char
-            var bufView = new Uint16Array(buf);
-            for (var i=0, strLen=message.length; i<strLen; i++) {
-                bufView[i] = message.charCodeAt(i);
-            }
-
-            console.log(bufView);           
-            
-            
-            var b = new ArrayBuffer(2048*2048*4);
-            var v1 = new Uint8Array(b);
-
-            
-            var i = 0,
-                j = 0;
-            while (i < 2048*2048*4 && j < (2048*2048*3)) {
-                v1[i] = bufView[j]; // R
-                v1[i + 1] = bufView[j + 1]; // G
-                v1[i + 2] = bufView[j + 2]; // B
-                v1[i + 3] = 255; // A
-                // Next pixel
-                i += 4;
-                j += 3;
-            }
-
-            console.log(v1);
-
-            uploadTextureData = v1;
+            uploadTextureData = event.data;
             uploadTextureDataOffsetY = diffTexture.width-32;
 
             workerbusy = false;            
