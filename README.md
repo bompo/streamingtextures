@@ -2,14 +2,14 @@ Streaming textures with progressive JPEG
 =================
 
 ### Examples
-The Examples stream a 2048x2048 (1.5 MB) progressive JPEG assigned to a spinning cube using different methods:
+The Examples stream a 2048x2048 (1.5 MB) progressive JPEG assigned to a spinning cube using different methods:<br/>
 <a href="http://bompo.github.com/streamingtextures/streaming_native.html">Streaming using native Image Element (only works in Firefox)</a><br/>
 <a href="http://bompo.github.com/streamingtextures/streaming_native_canvas.html">Streaming using native Image Element and 2D Canvas</a><br/>
 <a href="http://bompo.github.com/streamingtextures/streaming_worker.html">Streaming using compiled libjpeg and web workers</a><br/>
 <a href="http://bompo.github.com/streamingtextures/streaming_worker_custom.html">Streaming using compiled libjpeg and web workers with controls</a>
 
 ### Explanation
-3D models can be compressed with compression formats like <a href="http://code.google.com/p/webgl-loader/">WebGL Loader</a> or <a href="http://code.google.com/p/js-openctm/">OpenCTM</a> to a resonable amount.
+3D models can be compressed with compression formats like <a href="http://code.google.com/p/webgl-loader/">WebGL Loader</a> or <a href="http://code.google.com/p/js-openctm/">OpenCTM</a> down to a reasonable file size.
 But another big part of a 3D Model are the textures. Those are often larger in file size compared to the compressed models and still have to be transferred before the user can see the 3D model.
 The textures are often compressed with JPEG. It would be possible to further decrease the file size by decreasing the resolution or quality of the JPEG images but this would also decrease the quality overall. Another option left, is to stream those textures and show a progressive preview while streaming. <a href="http://en.wikipedia.org/wiki/JPEG">JPEG</a> supports a progressive mode, in which data is compressed in multiple passes of progressively higher detail. This is intended for large images which will be displayed while downloading over a slow connection, allowing a reasonable preview after receiving only a portion of the data.
 
